@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>JSON Formatter · Dev‑Tools</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #1e293b;
+      --text: #e2e8f0;
+      --subtext: #94a3b8;
+      --accent: #38bdf8;
+      --error: #f87171;
+      --key: #facc15;
+      --string: #4ade80;
+      --number: #60a5fa;
+      --boolean: #f472b6;
+      --null: #a78bfa;
+    }
+
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Fira Code', monospace;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      padding: 1rem 2rem;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+
+    .logo {
+      color: var(--accent);
+      font-weight: bold;
+      text-decoration: none;
+      font-size: 1.5rem;
+      margin-right: auto;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+
+    .logo span {
+      font-weight: 700;
+    }
+
+    header h1 {
+      font-size: 1.3rem;
+      color: var(--text);
+    }
+
+    main {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1px;
+      background: rgba(255,255,255,0.05);
+    }
+
+    .panel {
+      background: var(--panel);
+      display: flex;
+      flex-direction: column;
+      padding: 1.5rem;
+      overflow: hidden;
+    }
+
+    textarea {
+      flex: 1;
+      resize: none;
+      border: none;
+      outline: none;
+      background: transparent;
+      color: var(--text);
+      font-family: 'Fira Code', monospace;
+      font-size: 0.9rem;
+      line-height: 1.4;
+    }
+
+    .json-output {
+      flex: 1;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      overflow-y: auto;
+      background: transparent;
+      font-family: 'Fira Code', monospace;
+      font-size: 0.9rem;
+      line-height: 1.4;
+    }
+
+    .controls {
+      display: flex;
+      gap: 0.5rem;
+      margin-bottom: 0.75rem;
+    }
+
+    button {
+      flex: 1;
+      padding: 0.5rem 1rem;
+      border: none;
+      border-radius: 0.5rem;
+      background: var(--accent);
+      color: #0f172a;
+      font-weight: 600;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+
+    button:hover {
+      background: #7dd3fc;
+    }
+
+    .error {
+      color: var(--error);
+      font-size: 0.85rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .key { color: var(--key); }
+    .string { color: var(--string); }
+    .number { color: var(--number); }
+    .boolean { color: var(--boolean); }
+    .null { color: var(--null); }
+
+    @media(max-width: 900px) {
+      main {
+        grid-template-columns: 1fr;
+        grid-template-rows: 1fr 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <a class="logo" href="/">
+      <span>←</span> Dev‑Tools
+    </a>
+    <h1>JSON Formatter</h1>
+  </header>
+
+  <main>
+    <section class="panel" id="input-panel">
+      <div class="controls">
+        <button id="formatBtn">Format ▶</button>
+        <button id="clearBtn">Clear ✖</button>
+      </div>
+      <textarea id="input" placeholder="Paste your JSON here..."></textarea>
+      <p class="error" id="error"></p>
+    </section>
+
+    <section class="panel" id="output-panel">
+      <div class="controls">
+        <button id="copyBtn">Copy 📑</button>
+      </div>
+      <pre id="output" class="json-output"></pre>
+    </section>
+  </main>
+
+  <script>
+    const formatBtn = document.getElementById('formatBtn');
+    const clearBtn = document.getElementById('clearBtn');
+    const copyBtn = document.getElementById('copyBtn');
+    const input = document.getElementById('input');
+    const output = document.getElementById('output');
+    const errorEl = document.getElementById('error');
+
+    function syntaxHighlight(json) {
+      if (typeof json !== 'string') {
+        json = JSON.stringify(json, null, 2);
+      }
+      json = json.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+      return json.replace(/("(\\u[\da-fA-F]{4}|\\[^u]|[^\\"])*"(?=:))|("(\\u[\da-fA-F]{4}|\\[^u]|[^\\"])*")|\b(true|false|null)\b|\b-?\d+(\.\d+)?([eE][+-]?\d+)?\b/g, match => {
+        let cls = 'number';
+        if (/^".*"$/.test(match)) {
+          if (/:$/.test(match)) {
+            cls = 'key';
+          } else {
+            cls = 'string';
+          }
+        } else if (/true|false/.test(match)) {
+          cls = 'boolean';
+        } else if (/null/.test(match)) {
+          cls = 'null';
+        }
+        return `<span class="${cls}">${match}</span>`;
+      });
+    }
+
+    function formatJSON() {
+      const raw = input.value.trim();
+      if (!raw) {
+        output.innerHTML = '';
+        errorEl.textContent = '';
+        return;
+      }
+      try {
+        const parsed = JSON.parse(raw);
+        const highlighted = syntaxHighlight(parsed);
+        output.innerHTML = highlighted;
+        errorEl.textContent = '';
+      } catch (err) {
+        output.innerHTML = '';
+        errorEl.textContent = 'Invalid JSON: ' + err.message;
+      }
+    }
+
+    function clearFields() {
+      input.value = '';
+      output.innerHTML = '';
+      errorEl.textContent = '';
+    }
+
+    function copyOutput() {
+      const tempEl = document.createElement('textarea');
+      tempEl.value = output.innerText;
+      document.body.appendChild(tempEl);
+      tempEl.select();
+      document.execCommand('copy');
+      document.body.removeChild(tempEl);
+      copyBtn.textContent = 'Copied! ✔';
+      setTimeout(() => (copyBtn.textContent = 'Copy 📑'), 1500);
+    }
+
+    formatBtn.addEventListener('click', formatJSON);
+    clearBtn.addEventListener('click', clearFields);
+    copyBtn.addEventListener('click', copyOutput);
+  </script>
+</body>
+</html>
