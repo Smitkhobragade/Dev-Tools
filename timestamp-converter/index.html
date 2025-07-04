@@ -103,101 +103,116 @@
 </head>
 <body>
   <header>
-    <a class="logo" href="/Dev-Tools/">
-      <span>←</span> Dev‑Tools
-    </a>
+    <a class="logo" href="/Dev-Tools/"><span>←</span> Dev‑Tools</a>
     <h1>Timestamp Converter</h1>
   </header>
 
   <main>
     <div class="box">
+      <!-- Live clock -->
       <div class="live">
         <h2>🕒 Current Time (Local)</h2>
         <div id="liveDate"></div>
-        <div class="result"><code id="liveTsSec"></code><button class="copy-btn" onclick="copyText('liveTsSec')">Copy s</button></div>
-        <div class="result"><code id="liveTsMs"></code><button class="copy-btn" onclick="copyText('liveTsMs')">Copy ms</button></div>
+        <div class="result">
+          <code id="liveTsSec"></code>
+          <button class="copy-btn" onclick="copyText(this,'liveTsSec')">Copy s</button>
+        </div>
+        <div class="result">
+          <code id="liveTsMs"></code>
+          <button class="copy-btn" onclick="copyText(this,'liveTsMs')">Copy ms</button>
+        </div>
       </div>
 
-      <h2>📥 Timestamp → Date</h2>
+      <!-- Timestamp → Date -->
+      <h2>📥 Timestamp → Date</h2>
       <div class="field">
-        <label for="timestampInput">Unix Timestamp (seconds _or_ milliseconds):</label>
-        <input type="text" id="timestampInput" placeholder="e.g. 1722520000 or 1722520000123">
+        <label for="timestampInput">Unix Timestamp (seconds or milliseconds):</label>
+        <input type="text" id="timestampInput" placeholder="e.g. 1722520000 or 1722520000123">
       </div>
       <button onclick="convertToDateTime()">Convert to Date</button>
       <div class="result" id="dateOutput"></div>
 
       <hr>
 
-      <h2>📤 Date → Timestamp</h2>
+      <!-- Date → Timestamp -->
+      <h2>📤 Date → Timestamp</h2>
       <div class="field">
-        <label for="dateInput">Date (YYYY-MM-DD HH:mm:ss[.ms]):</label>
-        <input type="text" id="dateInput" placeholder="e.g. 2025-07-01 13:30:00 or 2025-07-01 13:30:00.123">
+        <label for="dateInput">Date (YYYY‑MM‑DD HH:mm:ss[.ms]):</label>
+        <input type="text" id="dateInput" placeholder="e.g. 2025‑07‑01 13:30:00 or 2025‑07‑01 13:30:00.123">
       </div>
       <button onclick="convertToTimestamp()">Convert to Timestamp</button>
-      <div class="result"><code id="timestampSecOutput"></code><button class="copy-btn" onclick="copyText('timestampSecOutput')">Copy s</button></div>
-      <div class="result"><code id="timestampMsOutput"></code><button class="copy-btn" onclick="copyText('timestampMsOutput')">Copy ms</button></div>
+      <div class="result">
+        <code id="timestampSecOutput"></code>
+        <button class="copy-btn" onclick="copyText(this,'timestampSecOutput')">Copy s</button>
+      </div>
+      <div class="result">
+        <code id="timestampMsOutput"></code>
+        <button class="copy-btn" onclick="copyText(this,'timestampMsOutput')">Copy ms</button>
+      </div>
     </div>
   </main>
 
   <script>
-    const liveDateEl     = document.getElementById('liveDate');
-    const liveTsSecEl    = document.getElementById('liveTsSec');
-    const liveTsMsEl     = document.getElementById('liveTsMs');
-    const dateOutput     = document.getElementById('dateOutput');
-    const tsSecOutput    = document.getElementById('timestampSecOutput');
-    const tsMsOutput     = document.getElementById('timestampMsOutput');
-
-    function pad(n){return n.toString().padStart(2,'0');}
+    /* ===== Live clock ===== */
+    const liveDateEl  = document.getElementById('liveDate');
+    const liveTsSecEl = document.getElementById('liveTsSec');
+    const liveTsMsEl  = document.getElementById('liveTsMs');
 
     function updateLive() {
       const now = new Date();
       liveDateEl.textContent = now.toLocaleString();
-      const ms = now.getTime();
-      const sec = Math.floor(ms/1000);
-      liveTsSecEl.textContent = sec;
-      liveTsMsEl.textContent  = ms;
+      liveTsSecEl.textContent = Math.floor(now.getTime() / 1000);
+      liveTsMsEl.textContent  = now.getTime();
     }
     updateLive();
     setInterval(updateLive, 1000);
 
+    /* ===== Timestamp → Date ===== */
+    const dateOutput = document.getElementById('dateOutput');
     function convertToDateTime() {
-      const input = document.getElementById('timestampInput').value.trim();
-      if(!input){ dateOutput.textContent=''; return; }
-      let num = Number(input);
-      if(isNaN(num)) { dateOutput.textContent='Invalid timestamp'; return; }
-      if(input.length <= 10) num *= 1000; // assume seconds
+      const raw = document.getElementById('timestampInput').value.trim();
+      if (!raw) { dateOutput.textContent = ''; return; }
+
+      let num = Number(raw);
+      if (isNaN(num)) { dateOutput.textContent = 'Invalid timestamp'; return; }
+      if (raw.length <= 10) num *= 1000;          // assume seconds
       const d = new Date(num);
+
       dateOutput.textContent = isNaN(d.getTime()) ? 'Invalid timestamp' : d.toLocaleString();
     }
 
-    function parseDateString(str){
-      const match = str.match(/(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,3}))?/);
-      if(!match) return null;
-      const [_,y,m,d,h,min,s,ms='0']=match;
-      return new Date(Number(y),Number(m)-1,Number(d),Number(h),Number(min),Number(s),Number(ms));
+    /* ===== Date → Timestamp ===== */
+    const tsSecOutput = document.getElementById('timestampSecOutput');
+    const tsMsOutput  = document.getElementById('timestampMsOutput');
+
+    function parseDateString(str) {
+        const m = str.match(/(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,3}))?/);
+        if (!m) return null;
+        const [_, y, mo, d, h, mi, s, ms = '0'] = m;
+        return new Date(+y, +mo - 1, +d, +h, +mi, +s, +ms);
     }
 
     function convertToTimestamp() {
       const str = document.getElementById('dateInput').value.trim();
-      const date = parseDateString(str);
-      if(!date||isNaN(date.getTime())){
+      const d = parseDateString(str);
+      if (!d || isNaN(d.getTime())) {
         tsSecOutput.textContent = tsMsOutput.textContent = 'Invalid date';
         return;
       }
-      const ms = date.getTime();
+      const ms = d.getTime();
       tsMsOutput.textContent  = ms;
-      tsSecOutput.textContent = Math.floor(ms/1000);
+      tsSecOutput.textContent = Math.floor(ms / 1000);
     }
 
-    function copyText(elId){
+    /* ===== Clipboard helper ===== */
+    function copyText(btn, elId) {
       const text = document.getElementById(elId).textContent;
-      if(!text) return;
-      navigator.clipboard.writeText(text).then(()=>{
-        const btn = event.target;
+      if (!text) return;
+      navigator.clipboard.writeText(text).then(() => {
         const original = btn.textContent;
-        btn.textContent='Copied! ✔';
-        setTimeout(()=>btn.textContent=original,1200);
-      });
+        btn.textContent = 'Copied! ✔';
+        setTimeout(() => btn.textContent = original, 1200);
+      }).catch(err => console.error('Clipboard copy failed', err));
     }
   </script>
 </body>
