@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Timestamp Converter · Dev‑Tools</title>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg: #0f172a;
+      --panel: #1e293b;
+      --text: #e2e8f0;
+      --accent: #38bdf8;
+      --highlight: #7dd3fc;
+      --muted: #94a3b8;
+    }
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: 'Fira Code', monospace;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+    header {
+      display: flex;
+      align-items: center;
+      padding: 1rem 2rem;
+      border-bottom: 1px solid rgba(255,255,255,0.05);
+    }
+    .logo {
+      color: var(--accent);
+      font-weight: bold;
+      text-decoration: none;
+      font-size: 1.5rem;
+      margin-right: auto;
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+    }
+    main {
+      flex: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 2rem;
+    }
+    .box {
+      background: var(--panel);
+      padding: 2rem;
+      border-radius: 1rem;
+      width: 100%;
+      max-width: 700px;
+      box-shadow: 0 0 12px rgba(0,0,0,0.2);
+    }
+    h2 { margin-bottom: 0.5rem; }
+    .live {
+      text-align: center;
+      margin-bottom: 2rem;
+      padding: 1rem;
+      background: rgba(255,255,255,0.05);
+      border-radius: 0.5rem;
+    }
+    .field { margin: 1rem 0; }
+    label { display: block; margin-bottom: 0.5rem; color: var(--muted); }
+    input[type="text"] {
+      width: 100%;
+      padding: 0.75rem;
+      background: #1e293b;
+      color: var(--text);
+      border: 1px solid #334155;
+      border-radius: 0.5rem;
+      font-size: 1rem;
+    }
+    .result {
+      margin-top: 0.75rem;
+      padding: 0.75rem 1rem;
+      background: rgba(255,255,255,0.05);
+      border-radius: 0.5rem;
+      font-size: 0.95rem;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 0.5rem;
+      word-break: break-all;
+    }
+    button {
+      margin-top: 1rem;
+      padding: 0.6rem 1.2rem;
+      background: var(--accent);
+      color: #0f172a;
+      font-weight: bold;
+      border: none;
+      border-radius: 0.5rem;
+      cursor: pointer;
+      font-size: 0.9rem;
+    }
+    button:hover { background: var(--highlight); }
+    .copy-btn { flex-shrink: 0; }
+    hr { margin: 2rem 0; border-color: rgba(255,255,255,0.1); }
+  </style>
+</head>
+<body>
+  <header>
+    <a class="logo" href="/Dev-Tools/">
+      <span>←</span> Dev‑Tools
+    </a>
+    <h1>Timestamp Converter</h1>
+  </header>
+
+  <main>
+    <div class="box">
+      <div class="live">
+        <h2>🕒 Current Time (Local)</h2>
+        <div id="liveDate"></div>
+        <div class="result"><code id="liveTsSec"></code><button class="copy-btn" onclick="copyText('liveTsSec')">Copy s</button></div>
+        <div class="result"><code id="liveTsMs"></code><button class="copy-btn" onclick="copyText('liveTsMs')">Copy ms</button></div>
+      </div>
+
+      <h2>📥 Timestamp → Date</h2>
+      <div class="field">
+        <label for="timestampInput">Unix Timestamp (seconds _or_ milliseconds):</label>
+        <input type="text" id="timestampInput" placeholder="e.g. 1722520000 or 1722520000123">
+      </div>
+      <button onclick="convertToDateTime()">Convert to Date</button>
+      <div class="result" id="dateOutput"></div>
+
+      <hr>
+
+      <h2>📤 Date → Timestamp</h2>
+      <div class="field">
+        <label for="dateInput">Date (YYYY-MM-DD HH:mm:ss[.ms]):</label>
+        <input type="text" id="dateInput" placeholder="e.g. 2025-07-01 13:30:00 or 2025-07-01 13:30:00.123">
+      </div>
+      <button onclick="convertToTimestamp()">Convert to Timestamp</button>
+      <div class="result"><code id="timestampSecOutput"></code><button class="copy-btn" onclick="copyText('timestampSecOutput')">Copy s</button></div>
+      <div class="result"><code id="timestampMsOutput"></code><button class="copy-btn" onclick="copyText('timestampMsOutput')">Copy ms</button></div>
+    </div>
+  </main>
+
+  <script>
+    const liveDateEl     = document.getElementById('liveDate');
+    const liveTsSecEl    = document.getElementById('liveTsSec');
+    const liveTsMsEl     = document.getElementById('liveTsMs');
+    const dateOutput     = document.getElementById('dateOutput');
+    const tsSecOutput    = document.getElementById('timestampSecOutput');
+    const tsMsOutput     = document.getElementById('timestampMsOutput');
+
+    function pad(n){return n.toString().padStart(2,'0');}
+
+    function updateLive() {
+      const now = new Date();
+      liveDateEl.textContent = now.toLocaleString();
+      const ms = now.getTime();
+      const sec = Math.floor(ms/1000);
+      liveTsSecEl.textContent = sec;
+      liveTsMsEl.textContent  = ms;
+    }
+    updateLive();
+    setInterval(updateLive, 1000);
+
+    function convertToDateTime() {
+      const input = document.getElementById('timestampInput').value.trim();
+      if(!input){ dateOutput.textContent=''; return; }
+      let num = Number(input);
+      if(isNaN(num)) { dateOutput.textContent='Invalid timestamp'; return; }
+      if(input.length <= 10) num *= 1000; // assume seconds
+      const d = new Date(num);
+      dateOutput.textContent = isNaN(d.getTime()) ? 'Invalid timestamp' : d.toLocaleString();
+    }
+
+    function parseDateString(str){
+      const match = str.match(/(\d{4})-(\d{2})-(\d{2})[ T](\d{2}):(\d{2}):(\d{2})(?:\.(\d{1,3}))?/);
+      if(!match) return null;
+      const [_,y,m,d,h,min,s,ms='0']=match;
+      return new Date(Number(y),Number(m)-1,Number(d),Number(h),Number(min),Number(s),Number(ms));
+    }
+
+    function convertToTimestamp() {
+      const str = document.getElementById('dateInput').value.trim();
+      const date = parseDateString(str);
+      if(!date||isNaN(date.getTime())){
+        tsSecOutput.textContent = tsMsOutput.textContent = 'Invalid date';
+        return;
+      }
+      const ms = date.getTime();
+      tsMsOutput.textContent  = ms;
+      tsSecOutput.textContent = Math.floor(ms/1000);
+    }
+
+    function copyText(elId){
+      const text = document.getElementById(elId).textContent;
+      if(!text) return;
+      navigator.clipboard.writeText(text).then(()=>{
+        const btn = event.target;
+        const original = btn.textContent;
+        btn.textContent='Copied! ✔';
+        setTimeout(()=>btn.textContent=original,1200);
+      });
+    }
+  </script>
+</body>
+</html>
